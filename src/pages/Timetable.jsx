@@ -14,12 +14,13 @@ export default function Timetable() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [eventsByDate, setEventsByDate] = useState({});
   const [showCalendar, setShowCalendar] = useState(false); // State to control calendar visibility
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
     useEffect(() => {
       const fetchEvents = async () => {
         try {
           const token = localStorage.getItem("token"); 
-          const response = await fetchWithAuth("http://127.0.0.1:8000/api/timetable/", {
+          const response = await fetchWithAuth(`${apiBaseUrl}timetable/`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
@@ -118,7 +119,7 @@ export default function Timetable() {
         try {
           console.log(event);
           const token = localStorage.getItem("token");
-          const response = await fetchWithAuth(`http://127.0.0.1:8000/api/timetable/${event.id}/`, {
+          const response = await fetchWithAuth(`${apiBaseUrl}timetable/${event.id}/`, {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
@@ -157,7 +158,7 @@ export default function Timetable() {
     const newEvents = events.map((event, i) =>
       i === index ? { ...event, height: newHeight, end: event.start + newHeight } : event
     );
-    resolveCollisions(newEvents);
+    resolveCollisions(newEvents, index);
   };
 
 

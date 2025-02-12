@@ -7,7 +7,7 @@ const AuthForm = () => {
     const [formData, setFormData] = useState({ username: "", email: "", password: "", password2: "" });
     const [error, setError] = useState(null);
     const navigate = useNavigate();
-
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
@@ -21,7 +21,7 @@ const AuthForm = () => {
             : { username: formData.username, email: formData.email, password: formData.password, password2: formData.password2 };
 
         try {
-            const response = await fetchWithAuth(`http://127.0.0.1:8000/api/${endpoint}/`, {
+            const response = await fetchWithAuth(`${apiBaseUrl}${endpoint}/`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

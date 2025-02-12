@@ -1,10 +1,12 @@
+
 export const refreshAccessToken = async () => {
     const refreshToken = localStorage.getItem("refresh");
     if (!refreshToken) {
         throw new Error("No refresh token found");
     }
     try {
-        const response = await fetch("http://127.0.0.1:8000/api/token/refresh/", {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+        const response = await fetch(`${apiBaseUrl}token/refresh/`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",

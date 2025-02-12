@@ -2,6 +2,7 @@ import { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AuthForm from "./pages/AuthForm";
 import Timetable from "./pages/Timetable";
+import SearchPage from "./pages/SearchPage";
 
 export default function App() {
   const ProtectedRoute = ({ children }) => {
@@ -24,6 +25,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Timetable />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/timetable/:username"
+            element={
+              <ProtectedRoute>
+                <SearchPage />
               </ProtectedRoute>
             }
           />
