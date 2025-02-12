@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import { Rnd } from "react-rnd";
 import dayjs from "dayjs";
 // import DatePicker from "react-datepicker";
 // import "react-datepicker/dist/react-datepicker.css";
 import CustomDatePicker from "../components/CustomDatePicker";
 import AddEventForm from "../components/AddEventForm";
+import { fetchWithAuth } from "../utlis/api";
 
 const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
 const scale = 1; // 1 pixel per minute
@@ -14,29 +15,143 @@ export default function Timetable() {
   const [eventsByDate, setEventsByDate] = useState({});
   const [showCalendar, setShowCalendar] = useState(false); // State to control calendar visibility
 
+    useEffect(() => {
+      const fetchEvents = async () => {
+        try {
+          const token = localStorage.getItem("token"); 
+          const response = await fetchWithAuth("http://127.0.0.1:8000/api/timetable/", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+    
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+    
+          const data = await response.json();
+          
+          const transformedEvents = transformEvents(data);
+          setEventsByDate(transformedEvents);
+        } catch (error) {
+          console.error("Error fetching events:", error);
+        }
+      };
+    
+      fetchEvents();
+    }, []);
+    
+  
+    // Function to transform backend data into frontend format
+    const transformEvents = (backendEvents) => {
+      const transformed = {};
+  
+      backendEvents.forEach((event) => {
+        const date = event.date;
+        const start = convertTimeToMinutes(event.start_time);
+        const end = convertTimeToMinutes(event.end_time);
+        const duration = end - start;
+  
+        if (!transformed[date]) {
+          transformed[date] = [];
+        }
+  
+        transformed[date].push({
+          text: event.event_name,
+          start,
+          end,
+          height: duration,
+          id: event.id,
+        });
+      });
+  
+      return transformed;
+    };
+  
+    // Helper function to convert "HH:MM:SS" to minutes
+    const convertTimeToMinutes = (time) => {
+      const [hours, minutes] = time.split(":").map(Number);
+      return hours * 60 + minutes;
+    };
+  
+
   const formattedDate = dayjs(selectedDate).format("YYYY-MM-DD");
   const events = eventsByDate[formattedDate] || [];
 
-  const addEvent = (text, start, duration) => {
+  const addEvent = (text, start, duration, _id) => {
     let end = start + duration;
     let hasCollision = events.some((event) => !(event.end <= start || event.start >= end));
 
     if (!hasCollision) {
-      const newEvents = [...events, { text, start, end, height: duration, id: Date.now() }];
+      const newEvents = [...events, { text, start, end, height: duration, id: _id }];
       setEventsByDate({ ...eventsByDate, [formattedDate]: newEvents });
     } else {
       alert("Slot already taken! Please choose a different time.");
     }
   };
 
-  const handleDragStop = (index, d) => {
-    const newStart = Math.round(d.y / scale);
-    const newEvents = events.map((event, i) =>
-      i === index ? { ...event, start: newStart, end: newStart + event.height } : event
-    );
-    resolveCollisions(newEvents);
+  // const handleDragStop = (index, d) => {
+  //   const newStart = Math.round(d.y / scale);
+  //   const newEvents = events.map((event, i) =>
+  //     i === index ? { ...event, start: newStart, end: newStart + event.height } : event
+  //   );
+  //   resolveCollisions(newEvents);
+  // };
+
+  const formatTimeForBackend = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:00`;
   };
 
+  const resolveCollisions = async (newEvents, index) => {
+    newEvents.sort((a, b) => a.start - b.start);
+    const hasCollision = newEvents.some((event, i, arr) => i > 0 && arr[i - 1].end > event.start);
+    setEventsByDate({ ...eventsByDate, [formattedDate]: hasCollision ? events : newEvents });
+  
+    if (!hasCollision) {
+      const event = newEvents[index];
+      const originalEvent = events[index];
+  
+      // Check if the event's start or end time has changed
+      if (event.start !== originalEvent.start || event.end !== originalEvent.end) {
+        try {
+          console.log(event);
+          const token = localStorage.getItem("token");
+          const response = await fetchWithAuth(`http://127.0.0.1:8000/api/timetable/${event.id}/`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              "start_time": formatTimeForBackend(event.start), // Convert to "HH:MM:SS"
+              "end_time": formatTimeForBackend(event.end), // Convert to "HH:MM:SS"
+            }),
+          });
+  
+          if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+          }
+  
+          console.log("Event updated successfully!");
+        } catch (error) {
+          console.error("Error updating event:", error);
+        }
+      }
+    }
+  };
+  
+  const handleDragStop = async (index, d) => {
+    const newStart = Math.round(d.y / scale);
+    const newEnd = newStart + events[index].height;
+  
+    const newEvents = events.map((event, i) =>
+      i === index ? { ...event, start: newStart, end: newEnd } : event
+    );
+  
+    resolveCollisions(newEvents, index);
+  };
   const handleResizeStop = (index, ref) => {
     const newHeight = Math.round(ref.offsetHeight / scale);
     const newEvents = events.map((event, i) =>
@@ -45,11 +160,6 @@ export default function Timetable() {
     resolveCollisions(newEvents);
   };
 
-  const resolveCollisions = (newEvents) => {
-    newEvents.sort((a, b) => a.start - b.start);
-    let hasCollision = newEvents.some((event, i, arr) => i > 0 && arr[i - 1].end > event.start);
-    setEventsByDate({ ...eventsByDate, [formattedDate]: hasCollision ? events : newEvents });
-  };
 
   const formatTime = (minutes) => {
     const hours = Math.floor(minutes / 60);
@@ -76,7 +186,7 @@ export default function Timetable() {
         {/* timetable grid */}
         <div className="flex gap-4">
           <div className="w-1/4 p-4 bg-gray-100 rounded-lg min-h-screen fixed">
-            <AddEventForm addEvent={addEvent} showCalendar={showCalendar} />
+            <AddEventForm addEvent={addEvent} showCalendar={showCalendar} selectedDate={selectedDate} />
           </div>
           <div className="w-1/4 p-4">
             {/* <AddEventForm addEvent={addEvent} /> */}
@@ -119,7 +229,7 @@ export default function Timetable() {
 
             {/* Timetable Hours */}
             {!showCalendar && (
-              <>
+              <div>
                 {hours.map((hour, i) => (
                   <div
                     key={i}
@@ -149,7 +259,7 @@ export default function Timetable() {
                     </div>
                   </Rnd>
                 ))}
-              </>
+              </div>
             )}
           </div>
         </div>
