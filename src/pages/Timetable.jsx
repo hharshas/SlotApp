@@ -7,6 +7,7 @@ import CustomDatePicker from "../components/CustomDatePicker";
 import AddEventForm from "../components/AddEventForm";
 import { fetchWithAuth } from "../utlis/api";
 
+
 const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
 const scale = 1; // 1 pixel per minute
 
@@ -43,20 +44,33 @@ export default function Timetable() {
     }, []);
     
   
-    // Function to transform backend data into frontend format
     const transformEvents = (backendEvents) => {
       const transformed = {};
-  
+    
+      // Get the user's time zone
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
       backendEvents.forEach((event) => {
-        const date = event.date;
-        const start = convertTimeToMinutes(event.start_time);
-        const end = convertTimeToMinutes(event.end_time);
+        // Parse the IST date and time from the backend
+        const istDate = new Date(`${event.date}T${event.start_time}+05:30`); // IST is UTC+5:30
+    
+        // Convert IST to the user's local time zone
+        const userDate = new Date(istDate.toLocaleString("en-US", { timeZone: userTimeZone }));
+    
+        // Format the date and time for the frontend
+        const date = userDate.toISOString().split("T")[0]; // YYYY-MM-DD
+        const start = convertTimeToMinutes(userDate.toTimeString().split(" ")[0]); // HH:mm:ss
+        const end = convertTimeToMinutes(
+          new Date(userDate.getTime() + (convertTimeToMinutes(event.end_time) - convertTimeToMinutes(event.start_time)) * 60 * 1000)
+            .toTimeString()
+            .split(" ")[0]
+        ); // HH:mm:ss
         const duration = end - start;
-  
+    
         if (!transformed[date]) {
           transformed[date] = [];
         }
-  
+    
         transformed[date].push({
           text: event.event_name,
           start,
@@ -65,17 +79,15 @@ export default function Timetable() {
           id: event.id,
         });
       });
-  
+    
       return transformed;
     };
-  
-    // Helper function to convert "HH:MM:SS" to minutes
+    
+    // Helper function to convert time string (HH:mm:ss) to minutes
     const convertTimeToMinutes = (time) => {
       const [hours, minutes] = time.split(":").map(Number);
       return hours * 60 + minutes;
     };
-  
-
   const formattedDate = dayjs(selectedDate).format("YYYY-MM-DD");
   const events = eventsByDate[formattedDate] || [];
 

@@ -1,15 +1,19 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+import { useNavigate } from "react-router-dom";
 import { fetchWithAuth } from "../utlis/api";
+import dayjs from "dayjs";
 
 export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
   const [eventText, setEventText] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [error, setError] = useState("");
-  const [searchUsername, setSearchUsername] = useState(""); // State for search input
-  const navigate = useNavigate(); // Hook for navigation
+  const [searchUsername, setSearchUsername] = useState("");
+  const navigate = useNavigate();
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+
+  // Detect the user's time zone
+  const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const convertToMinutes = (time) => {
     const [hours, minutes] = time.split(":").map(Number);
@@ -30,11 +34,31 @@ export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
       return;
     }
 
+    // Combine the selected date with the start and end times
+    const userDateTime = dayjs(selectedDate)
+      .hour(Math.floor(startMinutes / 60))
+      .minute(startMinutes % 60)
+      .second(0);
+
+    // Convert the user's local time to IST
+    const date = new Date(); // User's local time
+
+// Convert the user's local time to IST
+    const istDateTime = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      
+    // Format the date and time for the backend
+    const formattedDate = istDateTime.toISOString().split("T")[0]; // YYYY-MM-DD
+    const formattedStartTime = istDateTime.toTimeString().split(" ")[0]; // HH:mm:ss
+      
+    // Calculate end time
+    const endDateTime = new Date(istDateTime.getTime() + (endMinutes - startMinutes) * 60 * 1000);
+    const formattedEndTime = endDateTime.toTimeString().split(" ")[0]; // HH:mm:ss
+      
     const eventData = {
       event_name: eventText,
-      date: selectedDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
-      start_time: startTime + ":00", // Add seconds to match Django TimeField format
-      end_time: endTime + ":00",
+      date: formattedDate, // Date in YYYY-MM-DD format
+      start_time: formattedStartTime, // Time in HH:mm:ss format
+      end_time: formattedEndTime, // Time in HH:mm:ss format
     };
 
     try {
@@ -73,7 +97,7 @@ export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
   // Function to handle search
   const handleSearch = () => {
     if (searchUsername.trim()) {
-      navigate(`/timetable/${searchUsername}`); // Navigate to the searched user's timetable
+      navigate(`/timetable/${searchUsername}`);
     } else {
       alert("Please enter a username to search.");
     }
