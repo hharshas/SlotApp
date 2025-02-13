@@ -13,7 +13,7 @@ const scale = 1; // 1 pixel per minute
 export default function Timetable() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [eventsByDate, setEventsByDate] = useState({});
-  const [showCalendar, setShowCalendar] = useState(false); // State to control calendar visibility
+  const [showCalendar, setShowCalendar] = useState(false);
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
     useEffect(() => {
@@ -46,11 +46,23 @@ export default function Timetable() {
     // Function to transform backend data into frontend format
     const transformEvents = (backendEvents) => {
       const transformed = {};
-  
+    
+      // user's time zone
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
       backendEvents.forEach((event) => {
-        const date = event.date;
-        const start = convertTimeToMinutes(event.start_time);
-        const end = convertTimeToMinutes(event.end_time);
+        const istDate = new Date(`${event.date}T${event.start_time}+05:30`); // IST is UTC+5:30
+    
+        // cnvrt ist to the user's local time zone
+        const userDate = new Date(istDate.toLocaleString("en-US", { timeZone: userTimeZone }));
+    
+        const date = userDate.toISOString().split("T")[0]; // YYYY-MM-DD
+        const start = convertTimeToMinutes(userDate.toTimeString().split(" ")[0]); // HH:mm:ss
+        const end = convertTimeToMinutes(
+          new Date(userDate.getTime() + (convertTimeToMinutes(event.end_time) - convertTimeToMinutes(event.start_time)) * 60 * 1000)
+            .toTimeString()
+            .split(" ")[0]
+        ); // HH:mm:ss
         const duration = end - start;
   
         if (!transformed[date]) {
@@ -67,9 +79,9 @@ export default function Timetable() {
       });
   
       return transformed;
-    };
-  
-    // Helper function to convert "HH:MM:SS" to minutes
+    };  
+    
+    // HH:mm:ss to minutes
     const convertTimeToMinutes = (time) => {
       const [hours, minutes] = time.split(":").map(Number);
       return hours * 60 + minutes;
@@ -114,7 +126,7 @@ export default function Timetable() {
       const event = newEvents[index];
       const originalEvent = events[index];
   
-      // Check if the event's start or end time has changed
+      // chk if the event's starttime or endtime has changed
       if (event.start !== originalEvent.start || event.end !== originalEvent.end) {
         try {
           console.log(event);
@@ -126,8 +138,8 @@ export default function Timetable() {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-              "start_time": formatTimeForBackend(event.start), // Convert to "HH:MM:SS"
-              "end_time": formatTimeForBackend(event.end), // Convert to "HH:MM:SS"
+              "start_time": formatTimeForBackend(event.start), // "HH:MM:SS"
+              "end_time": formatTimeForBackend(event.end), // "HH:MM:SS"
             }),
           });
   
@@ -173,12 +185,12 @@ export default function Timetable() {
   };
 
   const handleCalendarToggle = () => {
-    setShowCalendar(!showCalendar); // Toggle calendar visibility
+    setShowCalendar(!showCalendar); 
   };
 
   const handleDateSelect = (date) => {
-    setSelectedDate(date); // Update selected date
-    setShowCalendar(false); // Hide calendar after selection
+    setSelectedDate(date); 
+    setShowCalendar(false); 
   };
 
   return (
@@ -206,7 +218,7 @@ export default function Timetable() {
                 </button>
                 <button
                   className="p-2 border rounded text-center cursor-pointer"
-                  onClick={handleCalendarToggle} // Toggle calendar visibility
+                  onClick={handleCalendarToggle}
                 >
                   {dayjs(selectedDate).format("MMM DD, YYYY")}
                 </button>

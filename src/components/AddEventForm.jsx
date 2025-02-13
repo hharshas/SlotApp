@@ -58,8 +58,8 @@ export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
       }
 
       const data = await response.json();
-
-      addEvent(eventText, startMinutes, endMinutes - startMinutes, data.id); // Update local state
+      console.log(data);
+      addEvent(eventText, startMinutes, endMinutes - startMinutes, data.id); 
       setEventText("");
       setStartTime("");
       setEndTime("");
@@ -69,8 +69,13 @@ export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
       setError(error.message);
     }
   };
-
-  // Function to handle search
+  
+  // helper fnction to convert time string (HH:mm:ss) to mins
+  const convertTimeToMinutes = (time) => {
+    const [hours, minutes] = time.split(":").map(Number);
+    return hours * 60 + minutes;
+  };
+  // fnction to handle search
   const handleSearch = () => {
     if (searchUsername.trim()) {
       navigate(`/timetable/${searchUsername}`); // Navigate to the searched user's timetable
@@ -79,11 +84,11 @@ export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
     }
   };
 
-  // Logout function
+  // lgout function
   const handleLogout = () => {
-    localStorage.removeItem("token"); // Clear token
-    localStorage.removeItem("refresh"); // Clear refresh token
-    navigate("/login"); // Redirect to login page
+    localStorage.removeItem("token");
+    localStorage.removeItem("refresh"); 
+    navigate("/login"); 
   };
 
   return (

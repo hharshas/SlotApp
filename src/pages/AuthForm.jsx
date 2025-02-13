@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Use this for redirection
+import { useNavigate } from "react-router-dom"; 
 import { fetchWithAuth } from "../utlis/api";
 
 const AuthForm = () => {
@@ -14,7 +14,7 @@ const AuthForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError(null); // Reset error before request
+        setError(null); 
         const endpoint = isLogin ? "token" : "register";
         const payload = isLogin
             ? { email: formData.email, password: formData.password }
@@ -38,12 +38,12 @@ const AuthForm = () => {
             const data = await response.json();
 
             if (isLogin) {
-                localStorage.setItem("token", data.access); // Store token
+                localStorage.setItem("token", data.access);
                 localStorage.setItem("refresh", data.refresh);
-                navigate("/timetable"); // Redirect to Timetable page after login
+                navigate("/timetable"); 
             } else {
                 alert("Registration successful. Please log in.");
-                setIsLogin(true); // Switch to login form after registration
+                setIsLogin(true); 
             }
         } catch (error) {
             console.error("Error:", error);

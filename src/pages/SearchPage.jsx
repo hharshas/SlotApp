@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom"; // Import useParams
+import { useParams, useNavigate } from "react-router-dom"; 
 import { Rnd } from "react-rnd";
 import dayjs from "dayjs";
 import CustomDatePicker from "../components/CustomDatePicker";
@@ -102,7 +102,7 @@ export default function SearchPage() {
         {/* Back Button */}
         <button
           className="w-full p-2 mb-4 bg-gray-500 text-white rounded hover:bg-gray-600"
-          onClick={() => navigate("/timetable")} // Navigate to /timetable
+          onClick={() => navigate("/timetable")} 
         >
           Back to Timetable
         </button>
