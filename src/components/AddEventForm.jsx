@@ -29,7 +29,7 @@ const handleAddEvent = async () => {
     // (+5:30)
     const istOffset = 5.5 * 60 * 60 * 1000; 
     const utcDate = date.getTime() + date.getTimezoneOffset() * 60 * 1000; // local time to UTC
-    const istDate = new Date(utcDate + ((date.getTimezoneOffset() < 0) ? +istOffset : -istOffset)); // apply offset
+    const istDate = new Date(utcDate + istOffset); // apply offset
     console.log("pffset", istOffset);
     console.log("timezone", date.getTimezoneOffset() * 60 * 1000);
     const year = istDate.getFullYear();
