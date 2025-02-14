@@ -21,7 +21,7 @@ const AuthForm = () => {
             : { username: formData.username, email: formData.email, password: formData.password, password2: formData.password2 };
 
         try {
-            const response = await fetchWithAuth(`${apiBaseUrl}${endpoint}/`, {
+            const response = await fetch(`${apiBaseUrl}${endpoint}/`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

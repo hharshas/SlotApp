@@ -51,31 +51,59 @@ export default function Timetable() {
       const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     
       backendEvents.forEach((event) => {
-        const istDate = new Date(`${event.date}T${event.start_time}+05:30`); // IST is UTC+5:30
+        console.log(event.start_time);
+        // const [datePart, timePart] = event.start_time.replace(" IST", "").split("T");
+        // const [endDatePart, endTimePart] = event.end_time.replace(" IST", "").split("T");
     
-        // cnvrt ist to the user's local time zone
-        const userDate = new Date(istDate.toLocaleString("en-US", { timeZone: userTimeZone }));
+        const [datePart, timePart] = event.start_time.replace("Z", "").split("T");
+        const [endDatePart, endTimePart] = event.end_time.replace("Z", "").split("T");
+
+        console.log(datePart);
+        const [year, month, day] = datePart.split("-").map(Number);
+        const [endYear, endMonth, endDay] = endDatePart.split("-").map(Number);
+        const [startHour, startMinute, startSecond] = timePart.split(":").map(Number);
+        const [endHour, endMinute, endSecond] = endTimePart.split(":").map(Number);
     
-        const date = userDate.toISOString().split("T")[0]; // YYYY-MM-DD
-        const start = convertTimeToMinutes(userDate.toTimeString().split(" ")[0]); // HH:mm:ss
-        const end = convertTimeToMinutes(
-          new Date(userDate.getTime() + (convertTimeToMinutes(event.end_time) - convertTimeToMinutes(event.start_time)) * 60 * 1000)
-            .toTimeString()
-            .split(" ")[0]
-        ); // HH:mm:ss
-        const duration = end - start;
-  
-        if (!transformed[date]) {
-          transformed[date] = [];
+        const startUTC = new Date(Date.UTC(year, month - 1, day, startHour - 5, startMinute - 30, startSecond));
+        const endUTC = new Date(Date.UTC(endYear, endMonth - 1, endDay, endHour - 5, endMinute - 30, endSecond));
+
+        console.log("startUTC: ", startUTC);
+        console.log("endUTC", endUTC);
+        const startDate = new Date(startUTC.toLocaleString("en-US", { timeZone: userTimeZone }));
+        const endDate = new Date(endUTC.toLocaleString("en-US", { timeZone: userTimeZone }));
+    
+        while (startDate <= endDate) {
+          let nextDay = new Date(startDate);
+          nextDay.setHours(23, 59, 59, 999);
+
+          let currentEnd = nextDay < endDate ? nextDay : endDate;
+          const year = startDate.getFullYear();
+          const month = String(startDate.getMonth() + 1).padStart(2, "0");
+          const day = String(startDate.getDate()).padStart(2, "0");
+          const date = `${year}-${month}-${day}`;
+    
+          const start = convertTimeToMinutes(startDate.toTimeString().split(" ")[0]);
+          const end = convertTimeToMinutes(currentEnd.toTimeString().split(" ")[0]);
+          const duration = end - start;
+    
+          if (!transformed[date]) {
+            transformed[date] = [];
+          }
+          console.log(date);
+          console.log(start);
+          console.log(startDate);
+          console.log(endDate);
+          transformed[date].push({
+            text: event.event_name,
+            start,
+            end,
+            height: duration,
+            id: event.id,
+          });
+    
+          startDate.setDate(startDate.getDate() + 1);
+          startDate.setHours(0, 0, 0, 0);
         }
-  
-        transformed[date].push({
-          text: event.event_name,
-          start,
-          end,
-          height: duration,
-          id: event.id,
-        });
       });
   
       return transformed;
@@ -91,17 +119,25 @@ export default function Timetable() {
   const formattedDate = dayjs(selectedDate).format("YYYY-MM-DD");
   const events = eventsByDate[formattedDate] || [];
 
-  const addEvent = (text, start, duration, _id) => {
-    let end = start + duration;
-    let hasCollision = events.some((event) => !(event.end <= start || event.start >= end));
-
-    if (!hasCollision) {
-      const newEvents = [...events, { text, start, end, height: duration, id: _id }];
-      setEventsByDate({ ...eventsByDate, [formattedDate]: newEvents });
-    } else {
-      alert("Slot already taken! Please choose a different time.");
-    }
+  const addEvent = (data) => {
+    const transformedEvents = transformEvents([data]);
+    
+    setEventsByDate((prevEventsByDate) => {
+      const updatedEvents = { ...prevEventsByDate };
+  
+      // Iterate over each date in transformedEvents
+      Object.keys(transformedEvents).forEach(date => {
+        // If the date already exists, push the new event; if not, create a new array
+        updatedEvents[date] = updatedEvents[date] 
+          ? [...updatedEvents[date], ...transformedEvents[date]]
+          : [...transformedEvents[date]];
+      });
+  
+      return updatedEvents;
+    });
   };
+  
+  
 
   // const handleDragStop = (index, d) => {
   //   const newStart = Math.round(d.y / scale);
@@ -129,7 +165,7 @@ export default function Timetable() {
       // chk if the event's starttime or endtime has changed
       if (event.start !== originalEvent.start || event.end !== originalEvent.end) {
         try {
-          console.log(event);
+          // console.log(event);
           const token = localStorage.getItem("token");
           const response = await fetchWithAuth(`${apiBaseUrl}timetable/${event.id}/`, {
             method: "PUT",

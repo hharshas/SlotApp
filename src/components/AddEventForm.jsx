@@ -4,98 +4,98 @@ import { fetchWithAuth } from "../utlis/api";
 
 export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
   const [eventText, setEventText] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
+  const [startDateTime, setStartDateTime] = useState("");
+  const [endDateTime, setEndDateTime] = useState("");
   const [error, setError] = useState("");
   const [searchUsername, setSearchUsername] = useState(""); // State for search input
   const navigate = useNavigate(); // Hook for navigation
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
-  const convertToMinutes = (time) => {
-    const [hours, minutes] = time.split(":").map(Number);
-    return hours * 60 + minutes;
+const handleAddEvent = async () => {
+  if (!eventText.trim() || !startDateTime || !endDateTime) {
+    alert("Please fill in all fields: Event Name, Start Time, and End Time.");
+    return;
+  }
+
+  let start = new Date(startDateTime);
+  let end = new Date(endDateTime);
+
+  if (start >= end) {
+    alert("Start time must be earlier than end time!");
+    return;
+  }
+
+  const formatDateTime = (date) => {
+    // (+5:30)
+    const istOffset = 5.5 * 60 * 60 * 1000; 
+    const utcDate = date.getTime() + date.getTimezoneOffset() * 60 * 1000; // local time to UTC
+    const istDate = new Date(utcDate + ((date.getTimezoneOffset() < 0) ? +istOffset : -istOffset)); // apply offset
+    console.log("pffset", istOffset);
+    console.log("timezone", date.getTimezoneOffset() * 60 * 1000);
+    const year = istDate.getFullYear();
+    const month = String(istDate.getMonth() + 1).padStart(2, "0");
+    const day = String(istDate.getDate()).padStart(2, "0");
+    const hours = String(istDate.getHours()).padStart(2, "0");
+    const minutes = String(istDate.getMinutes()).padStart(2, "0");
+    const seconds = String(istDate.getSeconds()).padStart(2, "0");
+    // 2024-02-14T12:00:00Z
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}Z`;
   };
 
-  const handleAddEvent = async () => {
-    if (!eventText.trim() || !startTime || !endTime) {
-      alert("Please fill in all fields: Event Name, Start Time, and End Time.");
-      return;
+  const eventData = {
+    event_name: eventText,
+    start_time: formatDateTime(start),
+    end_time: formatDateTime(end),
+  };
+
+  console.log("before API call: ", eventData);
+
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("User is not authenticated.");
     }
 
-    const startMinutes = convertToMinutes(startTime);
-    const endMinutes = convertToMinutes(endTime);
+    const response = await fetchWithAuth(`${apiBaseUrl}timetable/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(eventData),
+    });
 
-    if (startMinutes >= endMinutes) {
-      alert("Start time must be earlier than end time!");
-      return;
-    }
+    const data = await response.json();
+    console.log("API response: ", data);
 
-    const eventData = {
-      event_name: eventText,
-      date: selectedDate.toISOString().split("T")[0], // Format as YYYY-MM-DD
-      start_time: startTime + ":00", // Add seconds to match Django TimeField format
-      end_time: endTime + ":00",
-    };
+    // const [startHour, startMinute] = data.start_time.split("T")[1].split(":").map(Number);
+    // const [endHour, endMinute] = data.end_time.split("T")[1].split(":").map(Number);
 
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        throw new Error("User is not authenticated.");
-      }
+    // const startMinutes = startHour * 60 + startMinute;
+    // const endMinutes = endHour * 60 + endMinute;
+    // const duration = endMinutes - startMinutes;
 
-      const response = await fetchWithAuth(`${apiBaseUrl}timetable/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(eventData),
-      });
+    addEvent(eventData);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to add event.");
-      }
-
-      const data = await response.json();
-      console.log(data);
-      addEvent(eventText, startMinutes, endMinutes - startMinutes, data.id); 
-      setEventText("");
-      setStartTime("");
-      setEndTime("");
-      setError("");
-    } catch (error) {
-      console.error("Error adding event:", error);
-      setError(error.message);
-    }
-  };
-  
-  // helper fnction to convert time string (HH:mm:ss) to mins
-  const convertTimeToMinutes = (time) => {
-    const [hours, minutes] = time.split(":").map(Number);
-    return hours * 60 + minutes;
-  };
-  // fnction to handle search
-  const handleSearch = () => {
-    if (searchUsername.trim()) {
-      navigate(`/timetable/${searchUsername}`); // Navigate to the searched user's timetable
-    } else {
-      alert("Please enter a username to search.");
-    }
-  };
-
-  // lgout function
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refresh"); 
-    navigate("/login"); 
-  };
+    setEventText("");
+    setStartDateTime("");
+    setEndDateTime("");
+    setError("");
+  } catch (error) {
+    console.error("Error adding event:", error);
+    setError(error.message);
+  }
+};
 
   return (
     <div className="space-y-4">
       {/* Logout Button */}
       <button
-        onClick={handleLogout}
+        onClick={() => {
+          localStorage.removeItem("token");
+          localStorage.removeItem("refresh");
+          navigate("/login");
+        }}
         className="p-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
         Logout
@@ -114,7 +114,13 @@ export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
           />
           <button
             className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            onClick={handleSearch}
+            onClick={() => {
+              if (searchUsername.trim()) {
+                navigate(`/timetable/${searchUsername}`);
+              } else {
+                alert("Please enter a username to search.");
+              }
+            }}
           >
             Search
           </button>
@@ -122,14 +128,13 @@ export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
       </div>
 
       <h3 className="text-lg font-semibold mb-2">Book Slot</h3>
-      {/* Add Event Form */}
-      {showCalendar && (
+      {/* {showCalendar && (
         <div className="absolute rounded-lg inset-0 bg-white/80 shadow-lg ring-1 ring-black/5 flex items-center justify-center z-10 ">
           <p className="text-gray-600 text-lg font-semibold text-center">
             Select the date to fill a slot
           </p>
         </div>
-      )}
+      )} */}
       <input
         type="text"
         placeholder="Event Name"
@@ -138,16 +143,16 @@ export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
         onChange={(e) => setEventText(e.target.value)}
       />
       <input
-        type="time"
+        type="datetime-local"
         className="w-full p-2 border rounded mb-2"
-        value={startTime}
-        onChange={(e) => setStartTime(e.target.value)}
+        value={startDateTime}
+        onChange={(e) => setStartDateTime(e.target.value)}
       />
       <input
-        type="time"
+        type="datetime-local"
         className="w-full p-2 border rounded mb-2"
-        value={endTime}
-        onChange={(e) => setEndTime(e.target.value)}
+        value={endDateTime}
+        onChange={(e) => setEndDateTime(e.target.value)}
       />
       <button className="p-2 bg-blue-500 text-white rounded w-full" onClick={handleAddEvent}>
         Add Event
