@@ -6,6 +6,8 @@ import dayjs from "dayjs";
 import CustomDatePicker from "../components/CustomDatePicker";
 import AddEventForm from "../components/AddEventForm";
 import { fetchWithAuth } from "../utlis/api";
+import {motion, AnimatePresence} from "framer-motion";
+
 
 const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
 const scale = 1; // 1 pixel per minute
@@ -147,12 +149,25 @@ export default function Timetable() {
   //   resolveCollisions(newEvents);
   // };
 
-  const formatTimeForBackend = (minutes) => {
+  const formatTimeForBackend = (date, minutes) => {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
-    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:00`;
-  };
+  
+    const utcDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+ 
+    const istOffset = 5.5 * 60 * 60 * 1000; 
+    const istDate = new Date(utcDate.getTime() + istOffset);
+  
+    const year = istDate.getFullYear();
+    const month = String(istDate.getMonth() + 1).padStart(2, "0");
+    const day = String(istDate.getDate()).padStart(2, "0");
+    const formattedHours = String(hours).padStart(2, "0");
+    const formattedMinutes = String(mins).padStart(2, "0");
+  
+    return `${year}-${month}-${day}T${formattedHours}:${formattedMinutes}:00Z`;
+};
 
+  
   const resolveCollisions = async (newEvents, index) => {
     newEvents.sort((a, b) => a.start - b.start);
     const hasCollision = newEvents.some((event, i, arr) => i > 0 && arr[i - 1].end > event.start);
@@ -162,11 +177,11 @@ export default function Timetable() {
       const event = newEvents[index];
       const originalEvent = events[index];
   
-      // chk if the event's starttime or endtime has changed
       if (event.start !== originalEvent.start || event.end !== originalEvent.end) {
         try {
-          // console.log(event);
           const token = localStorage.getItem("token");
+          const eventDate = selectedDate;
+          console.log(eventDate);
           const response = await fetchWithAuth(`${apiBaseUrl}timetable/${event.id}/`, {
             method: "PUT",
             headers: {
@@ -174,8 +189,9 @@ export default function Timetable() {
               Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
-              "start_time": formatTimeForBackend(event.start), // "HH:MM:SS"
-              "end_time": formatTimeForBackend(event.end), // "HH:MM:SS"
+              // "YYYY-MM-DDTHH:MM:SSZ"
+              "start_time": formatTimeForBackend(eventDate, event.start), 
+              "end_time": formatTimeForBackend(eventDate, event.end),  
             }),
           });
   
@@ -230,55 +246,94 @@ export default function Timetable() {
   };
 
   return (
-    <div className="fw-screen min-h-screen bg-gray-200">
+    <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.5 }}
+    className="min-h-screen bg-gray-200"
+  >
+    <div className="fw-screen min-h-screen bg-gray-200 ">
       <div className="flex flex-col gap-4 p-4">
         {/* timetable grid */}
         <div className="flex gap-4">
-          <div className="w-1/4 p-4 bg-gray-100 rounded-lg min-h-screen fixed">
-            <AddEventForm addEvent={addEvent} showCalendar={showCalendar} selectedDate={selectedDate} />
-          </div>
+          <motion.div
+            initial={{ x: -100, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="w-1/4 p-4 bg-gray-100 rounded-lg min-h-screen fixed bg-gradient-to-tl from-gray-200 to-gray-00"
+          >
+            <AddEventForm
+              addEvent={addEvent}
+              showCalendar={showCalendar}
+              selectedDate={selectedDate}
+            />
+          </motion.div>
           <div className="w-1/4 p-4">
             {/* <AddEventForm addEvent={addEvent} /> */}
           </div>
 
-          <div className="w-3/4 relative border border-gray-300">
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="w-3/4 relative border border-gray-300"
+          >
             {/* Date Navigation Bar */}
             {true && (
-
-              <div className="flex justify-between bg-gray-200 p-2 rounded">
-                <button
+              <motion.div
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+                className="flex justify-between bg-gray-200 p-2 rounded"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   className="px-4 py-1 bg-gray-500 text-white rounded cursor-pointer"
                   onClick={() => handleDateChange(-1)}
                 >
                   Prev
-                </button>
-                <button
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.15 }}
+                  whileTap={{ scale: 0.95 }}
                   className="p-2 border rounded text-center cursor-pointer"
                   onClick={handleCalendarToggle}
                 >
-                  {dayjs(selectedDate).format("MMM DD, YYYY")}
-                </button>
-                <button 
+                  {dayjs(selectedDate).format('MMM DD, YYYY')}
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   className="px-4 py-1 bg-gray-500 text-white rounded cursor-pointer"
                   onClick={() => handleDateChange(1)}
                 >
                   Next
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             )}
-
-            {/* Full-Screen Calendar Modal */}
-            {showCalendar && (
+              {/* Full-Screen Calendar Modal */}
+              {showCalendar && (
                 <>
-                  <div className="w-full p-4 h-[calc(100vh-10vh)]">
-                    <CustomDatePicker selectedDate={selectedDate} handleDateSelect={handleDateSelect} eventsByDate={eventsByDate} />
-                  </div>
+                  <motion.div
+                    className="w-full p-4 h-[calc(100vh-10vh)]"
+                  >
+                    <CustomDatePicker
+                      selectedDate={selectedDate}
+                      handleDateSelect={handleDateSelect}
+                      eventsByDate={eventsByDate}
+                    />
+                  </motion.div>
                 </>
-            )}
+              )}
 
             {/* Timetable Hours */}
             {!showCalendar && (
-              <div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+              >
                 {hours.map((hour, i) => (
                   <div
                     key={i}
@@ -293,27 +348,42 @@ export default function Timetable() {
                 {events.map((event, index) => (
                   <Rnd
                     key={event.id}
-                    default={{ x: 0, y: event.start * scale, width: "100%", height: event.height * scale }}
+                    default={{
+                      x: 0,
+                      y: event.start * scale,
+                      width: '100%',
+                      height: event.height * scale,
+                    }}
                     position={{ x: 0, y: event.start * scale }}
-                    size={{ width: "100%", height: event.height * scale }}
+                    size={{ width: '100%', height: event.height * scale }}
                     bounds="parent"
-                    enableResizing={{ top: false, right: false, bottom: true, left: false }}
+                    enableResizing={{
+                      top: false,
+                      right: false,
+                      bottom: true,
+                      left: false,
+                    }}
                     onDragStop={(e, d) => handleDragStop(index, d)}
-                    onResizeStop={(e, direction, ref) => handleResizeStop(index, ref)}
-                    className="absolute bg-blue-300 p-2 rounded shadow-md cursor-pointer"
+                    onResizeStop={(e, direction, ref) =>
+                      handleResizeStop(index, ref)
+                    }
+                    className="absolute p-2 rounded shadow-md cursor-pointer overflow-hidden bg-blue-500/30 backdrop-blur-xs border border-blue-200/30"
                   >
-                    <div className="text-sm text-center font-bold">{event.text}</div>
+                    <div className="text-sm text-center font-bold">
+                      {event.text}
+                    </div>
                     <div className="text-xs text-center mt-1">
                       {formatTime(event.start)} - {formatTime(event.end)}
                     </div>
                   </Rnd>
                 ))}
-              </div>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
     </div>
+  </motion.div>
   );
 }
 

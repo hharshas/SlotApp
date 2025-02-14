@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
 import { fetchWithAuth } from "../utlis/api";
+import {motion, AnimatePresence} from "framer-motion";
 
 export default function AddEventForm({ addEvent, showCalendar, selectedDate }) {
   const [eventText, setEventText] = useState("");
@@ -90,16 +91,16 @@ const handleAddEvent = async () => {
   return (
     <div className="space-y-4">
       {/* Logout Button */}
-      <button
+      <motion.button
         onClick={() => {
-          localStorage.removeItem("token");
-          localStorage.removeItem("refresh");
-          navigate("/login");
+          localStorage.removeItem('token')
+          localStorage.removeItem('refresh')
+          navigate('/login')
         }}
         className="p-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
         Logout
-      </button>
+      </motion.button>
 
       {/* Search User by Username Section */}
       <div className="bg-gray-100 p-4 rounded-lg">
@@ -112,18 +113,20 @@ const handleAddEvent = async () => {
             value={searchUsername}
             onChange={(e) => setSearchUsername(e.target.value)}
           />
-          <button
+          <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
             className="p-2 bg-blue-500 text-white rounded hover:bg-blue-600"
             onClick={() => {
               if (searchUsername.trim()) {
-                navigate(`/timetable/${searchUsername}`);
+                navigate(`/timetable/${searchUsername}`)
               } else {
-                alert("Please enter a username to search.");
+                alert('Please enter a username to search.')
               }
             }}
           >
             Search
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -154,7 +157,10 @@ const handleAddEvent = async () => {
         value={endDateTime}
         onChange={(e) => setEndDateTime(e.target.value)}
       />
-      <button className="p-2 bg-blue-500 text-white rounded w-full" onClick={handleAddEvent}>
+      <button
+        className="p-2 bg-blue-500 text-white rounded w-full"
+        onClick={handleAddEvent}
+      >
         Add Event
       </button>
       {error && <p className="text-red-500 text-sm mt-2">{error}</p>}

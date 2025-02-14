@@ -4,6 +4,7 @@ import { Rnd } from "react-rnd";
 import dayjs from "dayjs";
 import CustomDatePicker from "../components/CustomDatePicker";
 import { fetchWithAuth } from "../utlis/api";
+import {motion, AnimatePresence} from "framer-motion";
 
 const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
 const scale = 1; // 1 pixel per minute
@@ -21,7 +22,7 @@ export default function SearchPage() {
     const fetchEvents = async () => {
       try {
         const token = localStorage.getItem("token");
-        const response = await fetchWithAuth(`${apiBaseUrl}timetable/${username}/`, {
+        const response = await fetchWithAuth(`${apiBaseUrl}user-timetable/${username}/`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -43,28 +44,68 @@ export default function SearchPage() {
 
   const transformEvents = (backendEvents) => {
     const transformed = {};
-
+  
+    // user's time zone
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  
     backendEvents.forEach((event) => {
-      const date = event.date;
-      const start = convertTimeToMinutes(event.start_time);
-      const end = convertTimeToMinutes(event.end_time);
-      const duration = end - start;
+      console.log(event.start_time);
+      // const [datePart, timePart] = event.start_time.replace(" IST", "").split("T");
+      // const [endDatePart, endTimePart] = event.end_time.replace(" IST", "").split("T");
+  
+      const [datePart, timePart] = event.start_time.replace("Z", "").split("T");
+      const [endDatePart, endTimePart] = event.end_time.replace("Z", "").split("T");
 
-      if (!transformed[date]) {
-        transformed[date] = [];
+      console.log(datePart);
+      const [year, month, day] = datePart.split("-").map(Number);
+      const [endYear, endMonth, endDay] = endDatePart.split("-").map(Number);
+      const [startHour, startMinute, startSecond] = timePart.split(":").map(Number);
+      const [endHour, endMinute, endSecond] = endTimePart.split(":").map(Number);
+  
+      const startUTC = new Date(Date.UTC(year, month - 1, day, startHour - 5, startMinute - 30, startSecond));
+      const endUTC = new Date(Date.UTC(endYear, endMonth - 1, endDay, endHour - 5, endMinute - 30, endSecond));
+
+      console.log("startUTC: ", startUTC);
+      console.log("endUTC", endUTC);
+      const startDate = new Date(startUTC.toLocaleString("en-US", { timeZone: userTimeZone }));
+      const endDate = new Date(endUTC.toLocaleString("en-US", { timeZone: userTimeZone }));
+  
+      while (startDate <= endDate) {
+        let nextDay = new Date(startDate);
+        nextDay.setHours(23, 59, 59, 999);
+
+        let currentEnd = nextDay < endDate ? nextDay : endDate;
+        const year = startDate.getFullYear();
+        const month = String(startDate.getMonth() + 1).padStart(2, "0");
+        const day = String(startDate.getDate()).padStart(2, "0");
+        const date = `${year}-${month}-${day}`;
+  
+        const start = convertTimeToMinutes(startDate.toTimeString().split(" ")[0]);
+        const end = convertTimeToMinutes(currentEnd.toTimeString().split(" ")[0]);
+        const duration = end - start;
+  
+        if (!transformed[date]) {
+          transformed[date] = [];
+        }
+        console.log(date);
+        console.log(start);
+        console.log(startDate);
+        console.log(endDate);
+        transformed[date].push({
+          text: event.event_name,
+          start,
+          end,
+          height: duration,
+          id: event.id,
+        });
+  
+        startDate.setDate(startDate.getDate() + 1);
+        startDate.setHours(0, 0, 0, 0);
       }
-
-      transformed[date].push({
-        text: event.event_name,
-        start,
-        end,
-        height: duration,
-        id: event.id,
-      });
     });
 
     return transformed;
-  };
+  };  
 
   const convertTimeToMinutes = (time) => {
     const [hours, minutes] = time.split(":").map(Number);
@@ -171,7 +212,7 @@ export default function SearchPage() {
                     bounds="parent"
                     enableResizing={{ top: false, right: false, bottom: false, left: false }}
                     disableDragging={true}
-                    className="absolute bg-blue-300 p-2 rounded shadow-md cursor-pointer"
+                    className="absolute p-2 rounded shadow-md cursor-pointer overflow-hidden bg-blue-500/30 backdrop-blur-xs border border-blue-200/30"
                   >
                     <div className="text-sm text-center font-bold">{event.text}</div>
                     <div className="text-xs text-center mt-1">

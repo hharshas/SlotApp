@@ -1,5 +1,7 @@
 import { useState } from "react";
 import dayjs from "dayjs";
+import {motion, AnimatePresence} from "framer-motion";
+
 
 export default function CustomDatePicker({ selectedDate, handleDateSelect, eventsByDate}) {
   const [currentMonth, setCurrentMonth] = useState(dayjs(selectedDate));
@@ -40,7 +42,6 @@ export default function CustomDatePicker({ selectedDate, handleDateSelect, event
               const dateKey = currentMonth.date(day).format("YYYY-MM-DD");
               const eventCount = eventsByDate[dateKey]?.length || 0;
 
-              // Determine intensity of the color based on event frequency
               const bgColor =
                 eventCount > 5 ? "bg-blue-900 text-white" :
                 eventCount > 3 ? "bg-blue-700 text-white" :
