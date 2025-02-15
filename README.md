@@ -4,12 +4,16 @@
 Assignment link: https://zelthy.com/assignments/frontend-intern
 
 ### How to setup?
+```sh
 git clone <repository-url>
 cd <repository-folder>
+```
+```sh
 npm install
 touch .env
 VITE_API_BASE_URL=<backend-url> [See Backend Repository Here](https://github.com/hharshas/django_server_assg)
-npm run dev  
+npm run dev
+```  
 
 ### Tech stack used - ReactJS, TailwindCSS, Framer-motion, DayJS. (everything in UI is made with scratch, no major library is used)
 
