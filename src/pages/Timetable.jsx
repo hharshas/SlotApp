@@ -1,13 +1,14 @@
 import { useState, useEffect} from "react";
 import { Rnd } from "react-rnd";
 import dayjs from "dayjs";
+import UpdateEventForm from "../components/UpdateEventForm";
 // import DatePicker from "react-datepicker";
 // import "react-datepicker/dist/react-datepicker.css";
 import CustomDatePicker from "../components/CustomDatePicker";
 import AddEventForm from "../components/AddEventForm";
 import { fetchWithAuth } from "../utlis/api";
 import {motion, AnimatePresence} from "framer-motion";
-
+import { X, PencilLine } from "lucide-react"; 
 
 const hours = Array.from({ length: 24 }, (_, i) => `${i}:00`);
 const scale = 1; // 1 pixel per minute
@@ -16,6 +17,15 @@ export default function Timetable() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [eventsByDate, setEventsByDate] = useState({});
   const [showCalendar, setShowCalendar] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalEvent, setModalEvent] = useState(null);
+
+
+  const openModal = (event) => {
+    setModalEvent({...modalEvent, id: event});
+    setIsModalOpen(true);
+  };
+
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
     useEffect(() => {
@@ -45,7 +55,6 @@ export default function Timetable() {
     }, []);
     
   
-    // Function to transform backend data into frontend format
     const transformEvents = (backendEvents) => {
       const transformed = {};
     
@@ -127,9 +136,7 @@ export default function Timetable() {
     setEventsByDate((prevEventsByDate) => {
       const updatedEvents = { ...prevEventsByDate };
   
-      // Iterate over each date in transformedEvents
       Object.keys(transformedEvents).forEach(date => {
-        // If the date already exists, push the new event; if not, create a new array
         updatedEvents[date] = updatedEvents[date] 
           ? [...updatedEvents[date], ...transformedEvents[date]]
           : [...transformedEvents[date]];
@@ -180,8 +187,7 @@ export default function Timetable() {
       if (event.start !== originalEvent.start || event.end !== originalEvent.end) {
         try {
           const token = localStorage.getItem("token");
-          const eventDate = selectedDate;
-          console.log(eventDate);
+          console.log("this is eventDate", selectedDate);
           const response = await fetchWithAuth(`${apiBaseUrl}timetable/${event.id}/`, {
             method: "PUT",
             headers: {
@@ -190,16 +196,16 @@ export default function Timetable() {
             },
             body: JSON.stringify({
               // "YYYY-MM-DDTHH:MM:SSZ"
-              "start_time": formatTimeForBackend(eventDate, event.start), 
-              "end_time": formatTimeForBackend(eventDate, event.end),  
+              "start_time": formatTimeForBackend(selectedDate, event.start), 
+              "end_time": formatTimeForBackend(selectedDate, event.end),  
             }),
           });
   
           if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
           }
-  
-          console.log("Event updated successfully!");
+          let data = await response.json();
+          console.log("Event updated successfully!", data);
         } catch (error) {
           console.error("Error updating event:", error);
         }
@@ -217,6 +223,12 @@ export default function Timetable() {
   
     resolveCollisions(newEvents, index);
   };
+  const handleUpdate = async(index) => {
+    const newEvents = events.map((event, i) =>
+      i === index ? { ...event, start: newStart, end: newEnd } : event
+    );
+    resolveCollisions(newEvents, index);
+  }
   const handleResizeStop = (index, ref) => {
     const newHeight = Math.round(ref.offsetHeight / scale);
     const newEvents = events.map((event, i) =>
@@ -244,6 +256,57 @@ export default function Timetable() {
     setSelectedDate(date); 
     setShowCalendar(false); 
   };
+  const handleDelete = async (eventId) => {
+    console.log("handledelete is callinng");
+    try {
+      const token = localStorage.getItem("token"); 
+      const response = await fetchWithAuth(`${apiBaseUrl}timetable/delete/${eventId}/`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`, 
+        },
+      });
+  
+      if (response.status === 204) {
+        setEventsByDate((prevEventsByDate) => {
+          let updatedEvents = { ...prevEventsByDate };
+          Object.keys(updatedEvents).forEach(date => {
+            updatedEvents[date] = updatedEvents[date].filter(event => event.id !== eventId);
+            if (updatedEvents[date].length === 0) {
+              delete updatedEvents[date];
+            }
+          });
+          return updatedEvents;
+        });
+  
+        console.log("Event deleted successfully");
+      } else {
+        const errorData = await response.json();
+        console.error("Error deleting event:", errorData);
+      }
+    } catch (error) {
+      console.error("Network error:", error);
+    }
+  };
+  const [isNearRightButton, setIsNearRightButton] = useState(false);
+
+  const [
+    mousePosition,
+    setMousePosition
+  ] = useState({ x: null, y: null });
+    useEffect(() => {
+    const updateMousePosition = ev => {
+      setMousePosition({ x: ev.clientX, y: ev.clientY });
+    };
+    window.addEventListener('mousemove', updateMousePosition);
+    return () => {
+      window.removeEventListener('mousemove', updateMousePosition);
+    };
+  }, []);
+
+  useEffect(()=>{
+    setIsNearRightButton(mousePosition.x >1700);
+  }, [mousePosition])
 
   return (
     <motion.div
@@ -252,7 +315,10 @@ export default function Timetable() {
     transition={{ duration: 0.5 }}
     className="min-h-screen bg-gray-200"
   >
-    <div className="fw-screen min-h-screen bg-gray-200 ">
+    <UpdateEventForm setEventsByDate = {setEventsByDate} apiBaseUrl = {apiBaseUrl} isModalOpen = {isModalOpen} setIsModalOpen = {setIsModalOpen} setModalEvent={setModalEvent} modalEvent={modalEvent} transformEvents={transformEvents} />
+    <div
+     className="fw-screen min-h-screen bg-gray-200 ">
+      {/* {mousePosition.x} */}
       <div className="flex flex-col gap-4 p-4">
         {/* timetable grid */}
         <div className="flex gap-4">
@@ -346,16 +412,17 @@ export default function Timetable() {
 
                 {/* Draggable Events */}
                 {events.map((event, index) => (
-                  <Rnd
+                  <>{!isNearRightButton && (
+                    <Rnd
                     key={event.id}
                     default={{
                       x: 0,
                       y: event.start * scale,
-                      width: '100%',
+                      width: "100%",
                       height: event.height * scale,
                     }}
                     position={{ x: 0, y: event.start * scale }}
-                    size={{ width: '100%', height: event.height * scale }}
+                    size={{ width: "100%", height: event.height * scale }}
                     bounds="parent"
                     enableResizing={{
                       top: false,
@@ -364,19 +431,97 @@ export default function Timetable() {
                       left: false,
                     }}
                     onDragStop={(e, d) => handleDragStop(index, d)}
-                    onResizeStop={(e, direction, ref) =>
-                      handleResizeStop(index, ref)
-                    }
+                    onResizeStop={(e, direction, ref) => handleResizeStop(index, ref)}
                     className="absolute p-2 rounded shadow-md cursor-pointer overflow-hidden bg-blue-500/30 backdrop-blur-xs border border-blue-200/30"
                   >
-                    <div className="text-sm text-center font-bold">
-                      {event.text}
-                    </div>
+                    {/* Delete Button */}
+                    <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log("this is clalling ");
+                      handleDelete(event.id);
+                    }}
+                    className="absolute top-1 right-1 p-1 bg-white rounded-full shadow hover:bg-gray-200"
+                  >
+                    <X size={12} className="text-red-500" />
+                    {/* kutta ja bai hu */}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log("this is clalling ");
+                      handleDelete(event.id);
+                    }}
+                    className="absolute top-1 right-8 p-1 bg-white rounded-full shadow hover:bg-gray-200"
+                  >
+                    <PencilLine size={12} className="text-red-500" />
+                    {/* kutta ja bai hu */}
+                  </button>
+                    {/* Event Details */}
+                    <div className="text-sm text-center font-bold">{event.text}</div>
                     <div className="text-xs text-center mt-1">
                       {formatTime(event.start)} - {formatTime(event.end)}
                     </div>
                   </Rnd>
-                ))}
+                  )}
+
+{isNearRightButton && (
+                    <Rnd
+                    key={event.id}
+                    default={{
+                      x: 0,
+                      y: event.start * scale,
+                      width: "100%",
+                      height: event.height * scale,
+                    }}
+                    position={{ x: 0, y: event.start * scale }}
+                    size={{ width: "100%", height: event.height * scale }}
+                    bounds="parent"
+                    disableDragging
+                    enableResizing={{
+                      top: false,
+                      right: false,
+                      bottom: true,
+                      left: false,
+                    }}
+                    onDragStop={(e, d) => handleDragStop(index, d)}
+                    onResizeStop={(e, direction, ref) => handleResizeStop(index, ref)}
+                    className="absolute p-2 rounded shadow-md cursor-pointer overflow-hidden bg-blue-500/30 backdrop-blur-xs border border-blue-200/30"
+                  >
+                    {/* Delete Button */}
+                    <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log("this is clalling ");
+                      handleDelete(event.id);
+                    }}
+                    className="absolute top-1 right-1 p-1 bg-white rounded-full shadow hover:bg-gray-200"
+                  >
+                    <X size={12} className="text-red-500" />
+                    {/* kutta ja bai hu */}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log("this is clalling ");
+                      openModal(event.id);
+                    }}
+                    className="absolute top-1 right-8 p-1 bg-white rounded-full shadow hover:bg-gray-200"
+                  >
+                    <PencilLine size={12} className="text-red-500" />
+                    {/* kutta ja bai hu */}
+                  </button>
+                    {/* Event Details */}
+                    <div className="text-sm text-center font-bold">{event.text}</div>
+                    <div className="text-xs text-center mt-1">
+                      {formatTime(event.start)} - {formatTime(event.end)}
+                    </div>
+                  </Rnd>
+                  )}
+                  
+                  </>
+
+))}
               </motion.div>
             )}
           </motion.div>

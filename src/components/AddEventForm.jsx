@@ -76,7 +76,7 @@ const handleAddEvent = async () => {
     // const endMinutes = endHour * 60 + endMinute;
     // const duration = endMinutes - startMinutes;
 
-    addEvent(eventData);
+    addEvent(data);
 
     setEventText("");
     setStartDateTime("");
