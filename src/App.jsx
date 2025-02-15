@@ -4,6 +4,7 @@ import AuthForm from "./pages/AuthForm";
 import Timetable from "./pages/Timetable";
 import SearchPage from "./pages/SearchPage";
 
+
 export default function App() {
   const ProtectedRoute = ({ children }) => {
     const token = localStorage.getItem("token");

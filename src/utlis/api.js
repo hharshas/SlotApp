@@ -1,5 +1,6 @@
 import { refreshAccessToken } from "./auth";
-
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export const fetchWithAuth = async (url, options = {}) => {
     const token = localStorage.getItem("token");
@@ -9,28 +10,46 @@ export const fetchWithAuth = async (url, options = {}) => {
         Authorization: `Bearer ${token}`,
     };
 
-    try {
-        const response = await fetch(url, { ...options, headers });
-
-        if (response.status === 401) {
+    return toast.promise(
+        (async () => {
             try {
-                const newAccessToken = await refreshAccessToken();
-                headers.Authorization = `Bearer ${newAccessToken}`;
-                const retryResponse = await fetch(url, { ...options, headers });
-                return retryResponse;
-            } catch (refreshError) {
-                if (refreshError.message === "Refresh token expired. Please log in again.") {
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("refresh");
-                    window.location.href = "/auth";
-                }
-                throw refreshError;
-            }
-        }
+                const response = await fetch(url, { ...options, headers });
 
-        return response;
-    } catch (error) {
-        console.error("API request failed:", error);
-        throw error;
-    }
+                if (response.status === 401) {
+                    toast.warn("Session expired. Refreshing token...");
+                    try {
+                        const newAccessToken = await refreshAccessToken();
+                        headers.Authorization = `Bearer ${newAccessToken}`;
+
+                        toast.info("Retrying request with new token...");
+                        const retryResponse = await fetch(url, { ...options, headers });
+
+                        return retryResponse;
+                    } catch (refreshError) {
+                        if (refreshError.message === "Refresh token expired. Please log in again.") {
+                            localStorage.removeItem("token");
+                            localStorage.removeItem("refresh");
+                            toast.error("Session expired. Please log in again.");
+                            window.location.href = "/auth";
+                        }
+                        throw refreshError;
+                    }
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.status} - ${response.statusText}`);
+                }
+
+                return response;
+            } catch (error) {
+                console.error("API request failed:", error);
+                throw error;
+            }
+        })(),
+        {
+            pending: "Fetching data...",
+            success: "Data loaded successfully!",
+            error: "API request failed. Please try again.",
+        }
+    );
 };
