@@ -16,10 +16,10 @@
     "dayjs": "^1.11.13",
     "framer-motion": "^12.4.3",
     "lucide-react": "^0.475.0",
-    "react": "^19.0.0",
+    "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
     "react-datepicker": "^8.0.0",
-    "react-dom": "^19.0.0",
+    "react-dom": "^18.3.1",
     "react-grid-layout": "^1.5.0",
     "react-rnd": "^10.4.14",
     "react-router-dom": "^7.1.5"
