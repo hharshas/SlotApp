@@ -1,5 +1,31 @@
 <!-- DO NOT REMOVE EXISTING CONTENTS OF THIS FILE, EVEN IN YOUR REPOSITORY -->
-# Frontend assignment repository template
+# Frontend assignment repository
+
+Assignment link: https://zelthy.com/assignments/frontend-intern
+
+### How to setup?
+git clone <repository-url>
+cd <repository-folder>
+npm install
+touch .env
+VITE_API_BASE_URL=<backend-url> [See Backend Repository Here](https://github.com/hharshas/django_server_assg)
+npm run dev  
+
+### Tech stack used - ReactJS, TailwindCSS, Framer-motion, DayJS. (everything in UI is made with scratch, no major library is used)
+
+### How to use ?
+Purpose: 
+    Users should be able to view available slots for other person in different timezone.
+    Users should be able to create, update, or delete their availability for different days.
+Interative UI: 
+    Beautiful ui with animations to have an graphical understanding of slot booked.
+    Drag to update the slot features.
+    Calender view option with busy days markers.
+
+
+
+
+## Instruction of Template :- 
 
 This is a template repository for submitting assignment for the Frontend developer internship at Zelthy. All those who are submitting the frontend assignment must use this template.
 
