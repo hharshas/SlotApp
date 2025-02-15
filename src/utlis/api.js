@@ -47,9 +47,9 @@ export const fetchWithAuth = async (url, options = {}) => {
             }
         })(),
         {
-            pending: "Fetching data...",
-            success: "Data loaded successfully!",
-            error: "API request failed. Please try again.",
+            pending: "Loading...",
+            success: "Request Performed successfully!",
+            error: "Request failed. Please try again.",
         }
     );
 };
