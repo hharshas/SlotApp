@@ -9,11 +9,13 @@ git clone <repository-url>
 cd <repository-folder>
 ```
 ```sh
-npm install
 touch .env
+```
 VITE_API_BASE_URL=<backend-url> [See Backend Repository Here](https://github.com/hharshas/django_server_assg)
+```sh
+npm install
 npm run dev
-```  
+```
 
 ### Tech stack used - ReactJS, TailwindCSS, Framer-motion, DayJS. (everything in UI is made with scratch, no major library is used)
 
