@@ -11,7 +11,7 @@ cd <repository-folder>
 ```sh
 touch .env
 ```
-VITE_API_BASE_URL=<backend-url> [Here's a Django-based backend repository.](https://github.com/hharshas/django_server_assg)
+VITE_API_BASE_URL=<backend-url> [Here's the Django-based backend repository.](https://github.com/hharshas/django_server_assg)
 ```sh
 npm install
 npm run dev
